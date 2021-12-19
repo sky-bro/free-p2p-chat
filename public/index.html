@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" href="./css/style.css" type="text/css" media="screen" />
+    </head>
+    <body>
+        <h1>Free P2P Chat!</h1>
+        <div class="select">
+            <label for="audioSource">Audio source: </label><select id="audioSource"></select>
+        </div>
+
+        <div class="select">
+            <label for="videoSource">Video source: </label><select id="videoSource"></select>
+        </div>
+        <div>
+            <input type="checkbox" id="audio" checked name="audio">
+            <label for="audio">Audio</label>
+
+            <input type="checkbox" id="video" checked name="video">
+            <label for="video">Video</label>
+        </div>
+
+        <video id="localVideo" playsinline autoplay></video>
+        <video id="remoteVideo" playsinline autoplay></video>
+
+        <button id="startButton">Start</button>
+        <button id="callButton" disabled>Call</button>
+        <button id="hangupButton" disabled>Hang Up</button>
+
+        <script type="text/javascript" src="./js/adapter.js"></script>
+        <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+        <script type="text/javascript" src="./js/main.js"></script>
+    </body>
+</html>

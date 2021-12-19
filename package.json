@@ -1,0 +1,18 @@
+{
+  "name": "p2p-free-chat",
+  "version": "1.0.0",
+  "description": "* html5",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.2",
+    "socket.io": "^4.4.0"
+  },
+  "engines": {
+    "node": "12.x"
+  }
+}

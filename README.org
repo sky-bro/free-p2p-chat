@@ -1,0 +1,48 @@
+#+TITLE: free p2p chat
+#+AUTHOR: [[https://k4i.top/][k4i]]
+
+* html5
+
++ loadedmetadata event
+
+* javascript apis
+
++ getUserMedia(): capture audio and video
++ MediaRecorder(): record audio and video
++ RTCPeerConnection(): stream audio and video between users
+  + addstream()
+  + onaddstream
+  + createOffer
++ RTCDataChannel(): stream data between users
+
+* Important Concepts
+
+** Signaling
+
+websocket
+socket.io
+
+** ICE, STUN and TURN
+
++ self hosting
+  + stun:stun.stunprotocol.org:3478
+  + [[https://github.com/coturn/coturn][coturn]]
++ free options
+  + [[https://gist.github.com/mondain/b0ec1cf5f60ae726202e][public stun list]]
++ test server
+  + [[https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/][Trickle ICE]]
+
+* Security
+
+* Demos
+
++ https://rtcmulticonnection.herokuapp.com/demos/
+
+* TODO Improvements
+
++ button to flip/rotate (remote should also rotate)
++ handling multiple sharing, and video/audio source change
+  + screen sharing
+  + web cam
+  + file
+  + chat
