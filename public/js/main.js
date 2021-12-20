@@ -39,6 +39,8 @@ function gotStream(stream) {
 }
 
 // join room at start
+var roomName;
+var userName;
 function start() {
     enableAudio = document.getElementById('audio').checked;
     enableVideo = document.getElementById('video').checked;
@@ -198,8 +200,17 @@ socket.on("message", (message) => {
         pc.createAnswer().then(setLocalAndSendSDP);
     } else if (message.type === "answer") {
         pc.setRemoteDescription(new RTCSessionDescription(message));
+    } else if (message.type === "chat") {
+        console.log("Peer Says:", message.data)
     }
 });
+
+function chat(message) {
+    socket.emit("message", roomName, {
+        type: "chat",
+        data: message
+    });
+}
 
 videoSelect.onchange = start;
 audioInputSelect.onchange = start;

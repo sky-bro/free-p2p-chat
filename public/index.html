@@ -30,14 +30,14 @@
             <label for="videoSource">Video source: </label><select id="videoSource"></select>
         </div>
 
-        <video id="localVideo" playsinline autoplay></video>
+        <video id="localVideo" muted playsinline autoplay></video>
         <video id="remoteVideo" playsinline autoplay></video>
 
         <button id="startButton">Start</button>
         <button id="callButton" disabled>Call</button>
         <button id="hangupButton" disabled>Hang Up</button>
 
-        <script type="text/javascript" src="./js/adapter.js"></script>
+        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/adapterjs/publish/adapter.min.js"></script>
         <script type="text/javascript" src="/socket.io/socket.io.js"></script>
         <script type="text/javascript" src="./js/main.js"></script>
     </body>
