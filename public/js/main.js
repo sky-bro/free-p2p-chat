@@ -38,9 +38,14 @@ function gotStream(stream) {
     // return navigator.mediaDevices.enumerateDevices();
 }
 
+// join room at start
 function start() {
     enableAudio = document.getElementById('audio').checked;
     enableVideo = document.getElementById('video').checked;
+    roomName = document.getElementById('roomname').value;
+    userName = document.getElementById('username').value;
+    socket.emit('create or join', roomName, userName);
+    // password = document.getElementById('password').value;
     if (window.stream) {
         window.stream.getTracks().forEach(track => {
             track.stop();
@@ -92,6 +97,7 @@ function handleConnection(event) {
 function gotRemoteStream(e) {
     console.log("remote got stream", e.stream)
     remoteVideoElement.srcObject = e.stream;
+    startButton.disabled = true;
     callButton.disabled = true;
     hangupButton.disabled = false;
 }
@@ -119,6 +125,7 @@ function setLocalAndSendSDP(desc) {
 // create connection and exchange sdp
 // use socketio to send (candidates + sdp) to the other peer
 function call() {
+    startButton.disabled = true;
     callButton.disabled = true;
     hangupButton.disabled = false;
 
@@ -143,19 +150,12 @@ function hangup() {
 // get a socket connection
 const socket = io();
 
-// TODO: join room
-roomName = "room01";
-userName = "sky";
-if (roomName !== '') {
-    socket.emit('create or join', roomName, userName);
-}
-
 socket.on('created', function(roomName, userName) {
     console.log(`${userName} Created room ${roomName}`);
 });
 
-socket.on('full', function(room) {
-    console.log(`room ${roomName} is full!`);
+socket.on('full', function(roomName) {
+    alert(`room ${roomName} is full!`);
 });
 
 socket.on('joined', function(roomName, userName) {
@@ -168,6 +168,7 @@ socket.on("countUpdated", (count) => {
 
 let peersReady = false;
 socket.on("ready", () => {
+    console.log("peer is ready, you can start the call now.")
     // now we have peers joined the same room
     peersReady = true;
     // local stream also ready

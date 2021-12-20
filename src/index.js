@@ -27,13 +27,11 @@ io.on("connection", (socket) => {
     });
 
     socket.on("create or join", (roomName, userName) => {
-        console.log(roomName);
         var clientsInRoom = io.sockets.adapter.rooms.get(roomName);
         var numClients = clientsInRoom ? clientsInRoom.size : 0;
 
         if (numClients === 0) { // create room
             socket.join(roomName);
-            console.log(io.sockets.adapter.rooms)
             socket.emit("created", roomName, userName);
         } else if (numClients === 1) { // join room
             socket.join(roomName);
