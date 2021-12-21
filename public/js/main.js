@@ -97,8 +97,15 @@ function handleConnection(event) {
 }
 
 function gotRemoteStream(e) {
-    console.log("remote got stream", e.stream)
-    remoteVideoElement.srcObject = e.stream;
+    console.log("got remote stream:", e)
+    if (e.streams && e.streams[0]) {
+        videoElem.srcObject = e.streams[0];
+    } else {
+        if (!remoteVideoElement.srcObject) {
+            remoteVideoElement.srcObject = new MediaStream();
+        }
+        remoteVideoElement.srcObject.addTrack(e.track);
+    }
     startButton.disabled = true;
     callButton.disabled = true;
     hangupButton.disabled = false;
@@ -109,10 +116,12 @@ function initPeerConnection() {
     pc = new RTCPeerConnection(servers);
     pc.onicecandidate = handleConnection;
     // remote peer added stream
-    pc.onaddstream = gotRemoteStream;
+    pc.ontrack = gotRemoteStream;
     // TODO: remote peer removed stream
     // pc.onremovestream
-    pc.addStream(localVideoElement.srcObject);
+    for (const track of localVideoElement.srcObject.getTracks()) {
+        pc.addTrack(track);
+    }
 }
 
 function setLocalAndSendSDP(desc) {
@@ -142,8 +151,10 @@ function call() {
 
 
 function hangup() {
-    pc.close();
-    pc = null;
+    if (pc) {
+        pc.close();
+        pc = null;
+    }
     callButton.disabled = false;
     hangupButton.disabled = true;
     socket.emit("message", roomName, "bye");
@@ -205,9 +216,11 @@ socket.on("message", (message) => {
     }
 });
 
+// this will be relayed by the socket.io server
 function chat(message) {
     socket.emit("message", roomName, {
         type: "chat",
+        from: userName,
         data: message
     });
 }

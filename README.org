@@ -1,6 +1,11 @@
 #+TITLE: free p2p chat
 #+AUTHOR: [[https://k4i.top/][k4i]]
 
+* run
+
+install dependencies: ~npm install~
+start server: ~npm start~
+
 * html5
 
 + loadedmetadata event
