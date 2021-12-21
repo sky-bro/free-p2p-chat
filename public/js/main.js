@@ -29,7 +29,7 @@ function gotDevices(devices) {
 
 // set stream for local video element
 function gotStream(stream) {
-    console.log(`localVideoStream: ${stream}`)
+    console.log("localVideoStream:", stream);
     localVideoElement.srcObject = stream;
     // TODO: RTCPeerConnection addStream / add stream
     // need to re-negotiate SDPs
@@ -63,6 +63,7 @@ function start() {
     if (enableVideo) {
         constraints["video"] = { deviceId: videoSource ? { exact: videoSource } : undefined };
     }
+
     return navigator.mediaDevices.getUserMedia(constraints).then(gotStream, (err) => {
         console.log("failed to get user media, error occurred", err);
     });
@@ -99,7 +100,7 @@ function handleConnection(event) {
 function gotRemoteStream(e) {
     console.log("got remote stream:", e)
     if (e.streams && e.streams[0]) {
-        videoElem.srcObject = e.streams[0];
+        remoteVideoElement.srcObject = e.streams[0];
     } else {
         if (!remoteVideoElement.srcObject) {
             remoteVideoElement.srcObject = new MediaStream();
@@ -111,12 +112,22 @@ function gotRemoteStream(e) {
     hangupButton.disabled = false;
 }
 
+function changeConnectionState(connectionState) {
+    let connectionStateElement = document.getElementById('connectionState');
+    connectionStateElement.className = `${connectionState}-state`;
+    connectionStateElement.innerText = `${connectionState}`;
+}
+
 function initPeerConnection() {
     // get iceCandidates from stun/turn servers
     pc = new RTCPeerConnection(servers);
     pc.onicecandidate = handleConnection;
     // remote peer added stream
     pc.ontrack = gotRemoteStream;
+    pc.onconnectionstatechange = () => changeConnectionState(pc.connectionState);
+    pc.onnegotiationneeded = () => {
+        negotiate();
+    };
     // TODO: remote peer removed stream
     // pc.onremovestream
     for (const track of localVideoElement.srcObject.getTracks()) {
@@ -133,14 +144,8 @@ function setLocalAndSendSDP(desc) {
     socket.emit("message", roomName, desc);
 }
 
-// create connection and exchange sdp
-// use socketio to send (candidates + sdp) to the other peer
-function call() {
-    startButton.disabled = true;
-    callButton.disabled = true;
-    hangupButton.disabled = false;
-
-    initPeerConnection();
+function negotiate() {
+    console.log("inside negotiate()")
     pc.createOffer(
         {
             offerToReceiveAudio: 1,
@@ -149,15 +154,26 @@ function call() {
     ).then(setLocalAndSendSDP);
 }
 
+// create connection and exchange sdp
+// use socketio to send (candidates + sdp) to the other peer
+function call() {
+    startButton.disabled = true;
+    callButton.disabled = true;
+    hangupButton.disabled = false;
+
+    initPeerConnection();
+}
+
 
 function hangup() {
     if (pc) {
         pc.close();
         pc = null;
     }
+    changeConnectionState('disconnected');
+    remoteVideoElement.srcObject = null;
     callButton.disabled = false;
     hangupButton.disabled = true;
-    socket.emit("message", roomName, "bye");
 }
 
 // get a socket connection
@@ -212,7 +228,7 @@ socket.on("message", (message) => {
     } else if (message.type === "answer") {
         pc.setRemoteDescription(new RTCSessionDescription(message));
     } else if (message.type === "chat") {
-        console.log("Peer Says:", message.data)
+        console.log(`[${message.from}]:`, message.data)
     }
 });
 
@@ -232,4 +248,7 @@ startButton.onclick = () => {
     navigator.mediaDevices.enumerateDevices().then(gotDevices);
 }
 callButton.onclick = call;
-hangupButton.onclick = hangup
+hangupButton.onclick = () => {
+    hangup();
+    socket.emit("message", roomName, "bye");
+}

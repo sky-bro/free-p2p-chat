@@ -2,6 +2,10 @@ video {
     width: 40%
 }
 
+.new-state, .connected-state, .connecting-state, .checking-state {
+    color: green;
+}
+
 /*
 video#localVideo {
     transform: rotateY(180deg);
