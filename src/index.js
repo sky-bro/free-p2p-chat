@@ -16,34 +16,34 @@ let count = 0;
 io.on("connection", (socket) => {
     socket.emit("countUpdated", ++count);
 
-    socket.on("disconnect", () => {
-        --count;
-    });
+    socket.on("disconnecting", () => {
+        socket.rooms.forEach(room => {
+            socket.to(room).emit("message", `A peer left room "${room}".`);
+        });
+    })
 
-    // server simply relay the msg to every one (except the sender) in the room
+    socket.on("disconnect", () => --count);
+
+    // server just relays the msg
     socket.on("message", (room, msg) => {
         if (!socket.rooms.has(room)) return;
-        socket.broadcast.in(room).emit("message", msg);
+        socket.to(room).emit("message", msg);
     });
 
-    socket.on("create or join", (roomName, userName) => {
+    socket.on("create or join", (roomName, userName, callback) => {
         var clientsInRoom = io.sockets.adapter.rooms.get(roomName);
         var numClients = clientsInRoom ? clientsInRoom.size : 0;
-
-        if (numClients === 0) { // create room
-            socket.join(roomName);
-            socket.emit("created", roomName, userName);
-        } else if (numClients === 1) { // join room
-            socket.join(roomName);
-            socket.emit('joined', roomName, userName);
-            // after being ready, every one in the room can start the call
+        if (numClients < 2) socket.join(roomName);
+        if (numClients === 0) {
+            callback(true, "created");
+        } else if (numClients === 1) {
+            callback(true, "joined");
             io.sockets.in(roomName).emit('ready');
-        } else { // max two clients
-            socket.emit('full', roomName);
+        } else { // at most two clients for each room
+            callback(false, "room is full");
         }
     });
 })
-
 
 server.listen(port, () => {
     console.log(`Server is up on port ${port}!`);

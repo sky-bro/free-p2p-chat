@@ -1,12 +1,20 @@
 const localVideoElement = document.querySelector('video#localVideo');
 const remoteVideoElement = document.querySelector('video#remoteVideo');
 
-const audioInputSelect = document.querySelector('select#audioSource');
+const audioCheckBox = document.getElementById('audio');
+const videoCheckBox = document.getElementById('video');
+
+const audioSelect = document.querySelector('select#audioSource');
 const videoSelect = document.querySelector('select#videoSource');
 
-const startButton = document.getElementById("startButton")
+const createOrJoinButton = document.getElementById("createOrJoinButton");
 const callButton = document.getElementById('callButton');
 const hangupButton = document.getElementById('hangupButton');
+const roomNameEle = document.getElementById('roomname');
+const userNameEle = document.getElementById('username');
+
+// get a socket connection
+const socket = io();
 
 // get mediaStream: https://github.com/webrtc/samples/tree/gh-pages/src/content/devices/input-output
 function gotDevices(devices) {
@@ -16,8 +24,8 @@ function gotDevices(devices) {
         option.value = deviceInfo.deviceId;
         console.log(option.value)
         if (deviceInfo.kind === 'audioinput') {
-            option.text = deviceInfo.label || `microphone ${audioInputSelect.length + 1}`;
-            audioInputSelect.appendChild(option);
+            option.text = deviceInfo.label || `microphone ${audioSelect.length + 1}`;
+            audioSelect.appendChild(option);
         } else if (deviceInfo.kind === 'videoinput') {
             option.text = deviceInfo.label || `camera ${videoSelect.length + 1}`;
             videoSelect.appendChild(option);
@@ -41,19 +49,27 @@ function gotStream(stream) {
 // join room at start
 var roomName;
 var userName;
+
+function createOrJoinRoom() {
+    roomName = roomNameEle.value;
+    userName = userNameEle.value;
+    socket.emit('create or join', roomName, userName, (success, msg) => {
+        if (success) {
+            createOrJoinButton.disabled = true;
+            roomNameEle.disabled = true;
+            userNameEle.disabled = true;
+            console.log(`${msg} room ${roomName}.`);
+        } else {
+            alert(`create or join room ${roomName} failed: ${msg}`);
+        }
+    });
+}
+
 function start() {
-    enableAudio = document.getElementById('audio').checked;
-    enableVideo = document.getElementById('video').checked;
-    roomName = document.getElementById('roomname').value;
-    userName = document.getElementById('username').value;
-    socket.emit('create or join', roomName, userName);
-    // password = document.getElementById('password').value;
-    if (window.stream) {
-        window.stream.getTracks().forEach(track => {
-            track.stop();
-        });
-    }
-    const audioSource = audioInputSelect.value;
+    const enableAudio = audioCheckBox.checked;
+    const enableVideo = videoCheckBox.checked;
+
+    const audioSource = audioSelect.value;
     const videoSource = videoSelect.value;
 
     const constraints = {};
@@ -107,7 +123,6 @@ function gotRemoteStream(e) {
         }
         remoteVideoElement.srcObject.addTrack(e.track);
     }
-    startButton.disabled = true;
     callButton.disabled = true;
     hangupButton.disabled = false;
 }
@@ -116,23 +131,6 @@ function changeConnectionState(connectionState) {
     let connectionStateElement = document.getElementById('connectionState');
     connectionStateElement.className = `${connectionState}-state`;
     connectionStateElement.innerText = `${connectionState}`;
-}
-
-function initPeerConnection() {
-    // get iceCandidates from stun/turn servers
-    pc = new RTCPeerConnection(servers);
-    pc.onicecandidate = handleConnection;
-    // remote peer added stream
-    pc.ontrack = gotRemoteStream;
-    pc.onconnectionstatechange = () => changeConnectionState(pc.connectionState);
-    pc.onnegotiationneeded = () => {
-        negotiate();
-    };
-    // TODO: remote peer removed stream
-    // pc.onremovestream
-    for (const track of localVideoElement.srcObject.getTracks()) {
-        pc.addTrack(track);
-    }
 }
 
 function setLocalAndSendSDP(desc) {
@@ -154,10 +152,24 @@ function negotiate() {
     ).then(setLocalAndSendSDP);
 }
 
+function initPeerConnection() {
+    // get iceCandidates from stun/turn servers
+    pc = new RTCPeerConnection(servers);
+    pc.onconnectionstatechange = () => changeConnectionState(pc.connectionState);
+    pc.onicecandidate = handleConnection;
+    // remote peer added stream
+    pc.ontrack = gotRemoteStream;
+    pc.onnegotiationneeded = negotiate;
+    // TODO: remote peer removed stream
+    // pc.onremovestream
+    for (const track of localVideoElement.srcObject.getTracks()) {
+        pc.addTrack(track);
+    }
+}
+
 // create connection and exchange sdp
 // use socketio to send (candidates + sdp) to the other peer
 function call() {
-    startButton.disabled = true;
     callButton.disabled = true;
     hangupButton.disabled = false;
 
@@ -175,21 +187,6 @@ function hangup() {
     callButton.disabled = false;
     hangupButton.disabled = true;
 }
-
-// get a socket connection
-const socket = io();
-
-socket.on('created', function(roomName, userName) {
-    console.log(`${userName} Created room ${roomName}`);
-});
-
-socket.on('full', function(roomName) {
-    alert(`room ${roomName} is full!`);
-});
-
-socket.on('joined', function(roomName, userName) {
-    console.log(`${userName} joined room ${roomName}`);
-});
 
 socket.on("countUpdated", (count) => {
     console.log(`Welcome! There're currently ${count} users connected.`)
@@ -229,6 +226,8 @@ socket.on("message", (message) => {
         pc.setRemoteDescription(new RTCSessionDescription(message));
     } else if (message.type === "chat") {
         console.log(`[${message.from}]:`, message.data)
+    } else {
+        console.log("message from server: ", message);
     }
 });
 
@@ -241,12 +240,22 @@ function chat(message) {
     });
 }
 
-videoSelect.onchange = start;
-audioInputSelect.onchange = start;
-startButton.onclick = () => {
-    start();
-    navigator.mediaDevices.enumerateDevices().then(gotDevices);
+audioCheckBox.onchange = () => {
+    audioSelect.disabled = !audioCheckBox.checked;
 }
+
+videoCheckBox.onchange = () => {
+    videoSelect.disabled = !videoCheckBox.checked;
+}
+
+roomNameEle.value = btoa(+new Date).slice(-6, -2);
+createOrJoinButton.onclick = createOrJoinRoom;
+audioSelect.onchange = start;
+videoSelect.onchange = start;
+// get local devices
+start();
+navigator.mediaDevices.enumerateDevices().then(gotDevices);
+
 callButton.onclick = call;
 hangupButton.onclick = () => {
     hangup();
