@@ -116,7 +116,7 @@ function changeConnectionState(connectionState) {
 function setLocalAndSendSDP(desc) {
     pc.setLocalDescription(desc).then(
         function() {
-            console.log("local description for local set.");
+            console.log("local description for local set:", desc);
         }
     );
     socket.emit("message", roomName, desc);
@@ -271,8 +271,7 @@ function replaceTrack(kind) {
             const oldTrackSender = pc.getSenders().find((sender) => {
                 return sender.track && sender.track.kind == newTrack.kind;
             })
-            pc.removeTrack(oldTrackSender);
-            pc.addTrack(newTrack);
+            if (oldTrackSender) oldTrackSender.replaceTrack(newTrack);
         }
     }, (err) => {
         console.log(`failed to get ${kind}, error occurred:`, err);
