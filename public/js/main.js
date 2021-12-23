@@ -13,6 +13,9 @@ const hangupButton = document.getElementById('hangupButton');
 const roomNameEle = document.getElementById('roomname');
 const userNameEle = document.getElementById('username');
 
+var roomName;
+var userName;
+
 // get a socket connection
 const socket = io();
 
@@ -42,46 +45,19 @@ function gotStream(stream) {
     // TODO: RTCPeerConnection addStream / add stream
     // need to re-negotiate SDPs
     if (peersReady) callButton.disabled = false;
-    // Refresh button list in case labels have become available
-    // return navigator.mediaDevices.enumerateDevices();
-}
-
-// join room at start
-var roomName;
-var userName;
-
-function createOrJoinRoom() {
-    roomName = roomNameEle.value;
-    userName = userNameEle.value;
-    socket.emit('create or join', roomName, userName, (success, msg) => {
-        if (success) {
-            createOrJoinButton.disabled = true;
-            roomNameEle.disabled = true;
-            userNameEle.disabled = true;
-            console.log(`${msg} room ${roomName}.`);
-        } else {
-            alert(`create or join room ${roomName} failed: ${msg}`);
-        }
-    });
+    toggleAudio();
+    toggleVideo();
 }
 
 function start() {
-    const enableAudio = audioCheckBox.checked;
-    const enableVideo = videoCheckBox.checked;
-
     const audioSource = audioSelect.value;
     const videoSource = videoSelect.value;
-
-    const constraints = {};
-    if (enableAudio) {
-        constraints["audio"] = { deviceId: audioSource ? { exact: audioSource } : undefined };
-    }
-    if (enableVideo) {
-        constraints["video"] = { deviceId: videoSource ? { exact: videoSource } : undefined };
-    }
-
+    const constraints = {
+        "audio": { deviceId: audioSource ? { exact: audioSource } : undefined },
+        "video": { deviceId: videoSource ? { exact: videoSource } : undefined }
+    };
     return navigator.mediaDevices.getUserMedia(constraints).then(gotStream, (err) => {
-        console.log("failed to get user media, error occurred", err);
+        console.log("failed to get user media, error occurred:", err);
     });
 }
 
@@ -121,6 +97,10 @@ function gotRemoteStream(e) {
         if (!remoteVideoElement.srcObject) {
             remoteVideoElement.srcObject = new MediaStream();
         }
+        const oldTrack = remoteVideoElement.srcObject.getTracks().find((track) => {
+            return track.kind == e.track.kind;
+        });
+        if (oldTrack) remoteVideoElement.srcObject.removeTrack(oldTrack);
         remoteVideoElement.srcObject.addTrack(e.track);
     }
     callButton.disabled = true;
@@ -240,18 +220,71 @@ function chat(message) {
     });
 }
 
-audioCheckBox.onchange = () => {
-    audioSelect.disabled = !audioCheckBox.checked;
+function createOrJoinRoom() {
+    roomName = roomNameEle.value;
+    userName = userNameEle.value;
+    socket.emit('create or join', roomName, userName, (success, msg) => {
+        if (success) {
+            createOrJoinButton.disabled = true;
+            roomNameEle.disabled = true;
+            userNameEle.disabled = true;
+            console.log(`${msg} room ${roomName}.`);
+        } else {
+            alert(`create or join room ${roomName} failed: ${msg}`);
+        }
+    });
 }
 
-videoCheckBox.onchange = () => {
-    videoSelect.disabled = !videoCheckBox.checked;
-}
-
-roomNameEle.value = btoa(+new Date).slice(-6, -2);
 createOrJoinButton.onclick = createOrJoinRoom;
-audioSelect.onchange = start;
-videoSelect.onchange = start;
+
+function toggleAudio() {
+    const isEnabled = audioCheckBox.checked;
+    audioSelect.disabled = !isEnabled;
+    if (localVideoElement.srcObject) {
+        localVideoElement.srcObject.getAudioTracks().forEach(track => track.enabled = isEnabled);
+    }
+}
+
+function toggleVideo() {
+    const isEnabled = videoCheckBox.checked;
+    videoSelect.disabled = !isEnabled;
+    if (localVideoElement.srcObject) {
+        localVideoElement.srcObject.getVideoTracks().forEach(track => track.enabled = isEnabled);
+    }
+}
+
+audioCheckBox.onchange = toggleAudio;
+videoCheckBox.onchange = toggleVideo;
+
+function replaceTrack(kind) {
+    const source = (kind == "audio") ? audioSelect.value : videoSelect.value;
+    const constraints = {};
+    constraints[kind] = { deviceId: {exact: source }}
+    return navigator.mediaDevices.getUserMedia(constraints).then((stream) => {
+        const newTrack = stream.getTracks()[0];
+        const oldTrack = localVideoElement.srcObject.getTracks().find((track) => {
+            return track.kind == newTrack.kind;
+        });
+        localVideoElement.srcObject.addTrack(newTrack);
+        if (oldTrack) localVideoElement.srcObject.removeTrack(oldTrack);
+        if (pc) {
+            const oldTrackSender = pc.getSenders().find((sender) => {
+                return sender.track && sender.track.kind == newTrack.kind;
+            })
+            pc.removeTrack(oldTrackSender);
+            pc.addTrack(newTrack);
+        }
+    }, (err) => {
+        console.log(`failed to get ${kind}, error occurred:`, err);
+    });
+
+}
+
+audioSelect.onchange = () => replaceTrack("audio");
+videoSelect.onchange = () => replaceTrack("video");
+
+// generate random roomName
+roomNameEle.value = btoa(+new Date).slice(-6, -2);
 // get local devices
 start();
 navigator.mediaDevices.enumerateDevices().then(gotDevices);
