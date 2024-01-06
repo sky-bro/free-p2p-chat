@@ -45,6 +45,11 @@ socket.io
 + add/remove audio/video tracks after connection established
 + record video/audio
 
+* Known issues
+
++ video quality too low
++ connection may fail (likely on mobile networks)
+
 * References
 
 + https://rtcmulticonnection.herokuapp.com/demos/

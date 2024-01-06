@@ -68,17 +68,17 @@ function start() {
 
 let servers = {
     iceServers: [
-        {
-            url: "stun:stun.stunprotocol.org:3478"
-        }
+        { url: "stun:stun.xten.com:3478" },
+        { url: "stun:stun.stunprotocol.org:3478" }
     ]
 }
 let pc = null;
 
 function handleConnection(event) {
     // let server relay this candidate info to other peer
-    console.log("candidate event:", event)
+    // console.log("candidate event:", event)
     if (event.candidate) {
+        console.log(`got my ${event.candidate.protocol} candidate ${event.candidate.address}:${event.candidate.port}`)
         socket.emit("message", roomName, {
             type: 'candidate',
             label: event.candidate.sdpMLineIndex,
@@ -196,15 +196,20 @@ socket.on("message", (message) => {
         if (!pc) {
             initPeerConnection();
         }
+        console.log(`adding peer ${candidate.protocol} candidate ${candidate.address}:${candidate.port}`)
         pc.addIceCandidate(candidate);
     } else if (message.type === "offer") {
         if (!pc) {
             initPeerConnection();
         }
-        pc.setRemoteDescription(new RTCSessionDescription(message));
+        let sessionDescription = new RTCSessionDescription(message)
+        console.log("peer offering sdp: ", sessionDescription)
+        pc.setRemoteDescription(sessionDescription);
         pc.createAnswer().then(setLocalAndSendSDP);
     } else if (message.type === "answer") {
-        pc.setRemoteDescription(new RTCSessionDescription(message));
+        let sessionDescription = new RTCSessionDescription(message)
+        console.log("peer answering sdp: ", sessionDescription)
+        pc.setRemoteDescription(sessionDescription);
     } else if (message.type === "chat") {
         console.log(`[${message.from}]:`, message.data)
     } else {
