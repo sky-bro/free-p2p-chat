@@ -16,6 +16,7 @@ const userNameEle = document.getElementById('username');
 var roomName;
 var userName;
 
+import { io } from "https://cdn.socket.io/4.7.2/socket.io.esm.min.js";
 // get a socket connection
 const socket = io();
 
